@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>brritto — Notification System Prototype</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { background:#1a1a2e; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; display:flex; flex-direction:column; align-items:center; min-height:100vh; padding:30px 16px 60px; }
+
+  /* ── SCENE SELECTOR ── */
+  .scene-bar { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:24px; max-width:900px; }
+  .scene-btn { background:#2a2a4a; color:#aaa; border:1px solid #3a3a5a; border-radius:20px; padding:6px 14px; font-size:12px; cursor:pointer; transition:all .2s; white-space:nowrap; }
+  .scene-btn.active { background:#7C3AED; color:#fff; border-color:#7C3AED; }
+  .scene-btn:hover:not(.active) { background:#3a3a5a; color:#fff; }
+
+  h1 { color:#fff; font-size:15px; font-weight:600; margin-bottom:6px; opacity:.8; }
+  .subtitle { color:#888; font-size:12px; margin-bottom:20px; text-align:center; }
+
+  /* ── PHONE SHELL ── */
+  .phone { width:375px; height:812px; background:#fff; border-radius:48px; overflow:hidden; position:relative; box-shadow:0 40px 80px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.1); flex-shrink:0; }
+  .phone-inner { width:100%; height:100%; position:relative; overflow:hidden; }
+
+  /* STATUS BAR */
+  .status-bar { height:44px; background:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 24px; position:relative; z-index:100; }
+  .status-bar .time { font-size:15px; font-weight:600; color:#111; }
+  .status-bar .icons { display:flex; gap:6px; align-items:center; font-size:12px; color:#111; }
+
+  /* SCREEN BASE */
+  .screen { position:absolute; inset:0; background:#f5f5f5; display:none; flex-direction:column; }
+  .screen.active { display:flex; }
+
+  /* HEADER */
+  .app-header { background:#fff; padding:12px 20px 14px; display:flex; align-items:center; gap:12px; box-shadow:0 1px 0 #f0f0f0; }
+  .back-btn { width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:18px; color:#333; }
+  .app-header h2 { font-size:17px; font-weight:700; color:#111; flex:1; }
+  .header-action { font-size:13px; color:#7C3AED; font-weight:600; cursor:pointer; }
+
+  /* SCROLL AREA */
+  .scroll-area { flex:1; overflow-y:auto; }
+  .scroll-area::-webkit-scrollbar { display:none; }
+
+  /* BOTTOM NAV */
+  .bottom-nav { height:83px; background:#fff; border-top:1px solid #f0f0f0; display:flex; padding:0 0 20px; }
+  .nav-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; padding-top:8px; position:relative; }
+  .nav-icon { font-size:22px; line-height:1; color:#bbb; }
+  .nav-label { font-size:10px; color:#bbb; font-weight:500; }
+  .nav-item.active .nav-icon, .nav-item.active .nav-label { color:#7C3AED; }
+  .nav-item.active .nav-label { font-weight:700; }
+  .nav-badge { position:absolute; top:6px; right:calc(50% - 16px); background:#EF4444; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:1px 5px; min-width:18px; text-align:center; border:2px solid #fff; }
+
+  /* ══════════════════════════════════════════
+     SCREEN 1 — HOME
+  ══════════════════════════════════════════ */
+  .home-hero { background:#fff; padding:16px 20px 20px; }
+  .home-user { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+  .avatar { width:44px; height:44px; border-radius:22px; background:#7C3AED; display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; }
+  .user-info h3 { font-size:16px; font-weight:700; color:#111; }
+  .user-info p { font-size:13px; color:#888; }
+  .home-icons { display:flex; gap:8px; margin-left:auto; font-size:20px; color:#555; }
+  .challenge-bar { background:#f0f0f0; border-radius:12px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; }
+  .challenge-left { display:flex; align-items:center; gap:10px; }
+  .challenge-left span { font-size:20px; }
+  .challenge-left p { font-size:14px; font-weight:700; color:#7C3AED; }
+  .no-exam-btn { background:#7C3AED; color:#fff; border:none; border-radius:10px; padding:8px 18px; font-size:13px; font-weight:700; cursor:pointer; }
+
+  .tiles-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; padding:16px; }
+  .tile { background:#fff; border-radius:14px; padding:16px 10px; display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  .tile-icon { font-size:28px; }
+  .tile-name { font-size:13px; font-weight:700; color:#111; text-align:center; }
+  .tile-sub { font-size:11px; color:#888; text-align:center; }
+
+  .home-banner { margin:0 16px 16px; border-radius:14px; overflow:hidden; background:linear-gradient(135deg,#4c1d95,#7C3AED,#60a5fa); padding:18px 20px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; }
+  .banner-text { color:#fff; font-size:15px; font-weight:700; line-height:1.4; }
+  .banner-icon { font-size:36px; }
+
+  /* ══════════════════════════════════════════
+     SCREEN 2 — PUSH NOTIFICATION OVERLAY
+  ══════════════════════════════════════════ */
+  #screen-push .phone-bg { position:absolute; inset:0; background:#f5f5f5; }
+  #screen-push .push-home-blur { position:absolute; inset:0; filter:blur(2px); opacity:.4; pointer-events:none; }
+
+  .push-banner { position:absolute; top:52px; left:12px; right:12px; background:rgba(255,255,255,.96); backdrop-filter:blur(20px); border-radius:18px; padding:14px 16px; box-shadow:0 8px 32px rgba(0,0,0,.18); z-index:200; animation:slideDown .35s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes slideDown { from{transform:translateY(-120px);opacity:0} to{transform:translateY(0);opacity:1} }
+  .push-banner .push-app-row { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .push-app-icon { width:22px; height:22px; background:#7C3AED; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:12px; }
+  .push-app-name { font-size:12px; color:#888; font-weight:600; }
+  .push-time { font-size:11px; color:#aaa; margin-left:auto; }
+  .push-title { font-size:15px; font-weight:700; color:#111; margin-bottom:4px; }
+  .push-body { font-size:13px; color:#555; line-height:1.4; }
+  .push-actions { display:flex; gap:10px; margin-top:12px; }
+  .push-action-btn { flex:1; background:#f0f0f0; border:none; border-radius:10px; padding:9px; font-size:13px; font-weight:600; color:#333; cursor:pointer; text-align:center; }
+  .push-action-btn.primary { background:#7C3AED; color:#fff; }
+
+  .push-label { position:absolute; bottom:140px; left:0; right:0; text-align:center; font-size:12px; color:#999; }
+  .push-dismiss { position:absolute; bottom:100px; left:50%; transform:translateX(-50%); background:#7C3AED; color:#fff; border:none; border-radius:20px; padding:10px 28px; font-size:14px; font-weight:600; cursor:pointer; }
+
+  /* push variants panel */
+  .push-variants { position:absolute; bottom:16px; left:12px; right:12px; background:#fff; border-radius:16px; padding:14px; box-shadow:0 4px 16px rgba(0,0,0,.1); }
+  .push-variants h4 { font-size:12px; color:#888; font-weight:600; margin-bottom:10px; text-transform:uppercase; letter-spacing:.5px; }
+  .variant-pill { background:#f5f0ff; color:#7C3AED; border-radius:8px; padding:8px 12px; margin-bottom:6px; font-size:13px; cursor:pointer; border:1px solid #e5d8ff; }
+  .variant-pill:last-child { margin-bottom:0; }
+  .variant-pill strong { display:block; font-weight:700; margin-bottom:2px; }
+  .variant-pill span { font-size:12px; color:#888; }
+
+  /* ══════════════════════════════════════════
+     SCREEN 3 — INBOX
+  ══════════════════════════════════════════ */
+  .tab-bar { display:flex; background:#fff; border-bottom:1px solid #f0f0f0; }
+  .tab { flex:1; text-align:center; padding:14px 0; font-size:14px; font-weight:600; color:#aaa; cursor:pointer; border-bottom:3px solid transparent; transition:all .2s; }
+  .tab.active { color:#7C3AED; border-bottom-color:#7C3AED; }
+
+  .inbox-meta { display:flex; align-items:center; justify-content:space-between; padding:12px 16px 8px; }
+  .inbox-meta span { font-size:13px; color:#888; }
+  .inbox-meta a { font-size:13px; color:#7C3AED; font-weight:600; cursor:pointer; }
+
+  .notif-item { background:#fff; margin:0 12px 8px; border-radius:14px; padding:14px 14px; display:flex; gap:12px; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.05); position:relative; overflow:hidden; transition:transform .15s; }
+  .notif-item:active { transform:scale(.98); }
+  .notif-item.unread::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:#7C3AED; border-radius:14px 0 0 14px; }
+  .notif-icon-wrap { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+  .notif-icon-wrap.purple { background:#f0ebff; }
+  .notif-icon-wrap.green  { background:#ecfdf5; }
+  .notif-icon-wrap.orange { background:#fff7ed; }
+  .notif-icon-wrap.blue   { background:#eff6ff; }
+  .notif-icon-wrap.red    { background:#fff1f2; }
+  .notif-content { flex:1; min-width:0; }
+  .notif-title { font-size:14px; font-weight:700; color:#111; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .notif-item.read .notif-title { font-weight:500; color:#444; }
+  .notif-body { font-size:13px; color:#666; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .notif-time { font-size:11px; color:#bbb; margin-top:4px; }
+  .notif-dot { width:8px; height:8px; border-radius:4px; background:#7C3AED; flex-shrink:0; margin-top:4px; }
+  .notif-item.read .notif-dot { background:transparent; }
+
+  .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:12px; padding:40px; }
+  .empty-state .empty-icon { font-size:56px; opacity:.3; }
+  .empty-state p { font-size:15px; color:#aaa; text-align:center; }
+
+  /* ══════════════════════════════════════════
+     SCREEN 4 — NOTIFICATION DETAIL
+  ══════════════════════════════════════════ */
+  .notif-detail-hero { background:#7C3AED; padding:28px 24px 32px; text-align:center; }
+  .notif-detail-hero .big-icon { font-size:56px; margin-bottom:12px; display:block; }
+  .notif-detail-hero h2 { font-size:20px; font-weight:800; color:#fff; line-height:1.3; }
+
+  .notif-detail-body { background:#fff; margin:-16px 16px 0; border-radius:20px; padding:22px; box-shadow:0 4px 20px rgba(0,0,0,.1); }
+  .notif-detail-body p { font-size:15px; color:#333; line-height:1.7; }
+  .notif-detail-meta { padding:16px 16px 0; display:flex; gap:8px; flex-wrap:wrap; }
+  .meta-chip { background:#f5f0ff; color:#7C3AED; border-radius:20px; padding:5px 12px; font-size:12px; font-weight:600; }
+  .cta-area { padding:20px 16px 0; }
+  .cta-btn { width:100%; background:#7C3AED; color:#fff; border:none; border-radius:14px; padding:16px; font-size:16px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .cta-btn:active { opacity:.85; }
+
+  /* ══════════════════════════════════════════
+     SCREEN 5 — SPLASH NOTIFICATION
+  ══════════════════════════════════════════ */
+  #screen-splash { background:linear-gradient(160deg,#4c1d95 0%,#7C3AED 50%,#a855f7 100%); }
+  #screen-splash .status-bar { background:transparent; }
+  #screen-splash .status-bar .time, #screen-splash .status-bar .icons { color:#fff; }
+
+  .splash-content { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 28px; text-align:center; }
+  .splash-badge { background:rgba(255,255,255,.15); border-radius:16px; padding:6px 16px; font-size:13px; color:#e0c8ff; font-weight:600; margin-bottom:24px; }
+  .splash-icon { font-size:80px; margin-bottom:20px; filter:drop-shadow(0 8px 24px rgba(0,0,0,.3)); animation:popIn .5s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes popIn { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
+  .splash-title { font-size:26px; font-weight:800; color:#fff; line-height:1.25; margin-bottom:12px; }
+  .splash-body { font-size:15px; color:rgba(255,255,255,.8); line-height:1.6; margin-bottom:32px; }
+  .splash-score-row { display:flex; gap:12px; margin-bottom:32px; width:100%; }
+  .score-card { flex:1; background:rgba(255,255,255,.15); border-radius:16px; padding:14px 8px; text-align:center; backdrop-filter:blur(10px); }
+  .score-card .sc-num { font-size:28px; font-weight:800; color:#fff; }
+  .score-card .sc-lbl { font-size:11px; color:rgba(255,255,255,.7); font-weight:600; margin-top:2px; }
+  .splash-cta { width:100%; background:#fff; color:#7C3AED; border:none; border-radius:14px; padding:17px; font-size:16px; font-weight:800; cursor:pointer; margin-bottom:12px; }
+  .splash-secondary { background:transparent; border:2px solid rgba(255,255,255,.4); color:#fff; border-radius:14px; padding:14px; font-size:14px; font-weight:600; cursor:pointer; width:100%; }
+
+  /* ══════════════════════════════════════════
+     SCREEN 6 — LEARN + IN-APP TOAST
+  ══════════════════════════════════════════ */
+  .learn-header { background:#fff; padding:12px 20px; display:flex; align-items:center; gap:12px; }
+  .learn-progress-row { display:flex; align-items:center; gap:10px; font-size:13px; color:#888; padding:10px 20px; background:#fff; border-bottom:1px solid #f0f0f0; }
+  .progress-bar-wrap { flex:1; height:6px; background:#f0f0f0; border-radius:3px; }
+  .progress-bar-fill { height:100%; background:#7C3AED; border-radius:3px; transition:width .3s; }
+
+  .question-card { background:#fff; margin:16px; border-radius:16px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+  .question-card .q-num { font-size:13px; color:#888; margin-bottom:8px; }
+  .question-card .q-text { font-size:15px; color:#111; line-height:1.6; }
+
+  .answer-options { padding:0 16px 16px; display:flex; flex-direction:column; gap:8px; }
+  .option { background:#fff; border:1.5px solid #e8e8e8; border-radius:12px; padding:14px 16px; font-size:14px; color:#333; cursor:pointer; display:flex; align-items:center; justify-content:space-between; transition:all .15s; }
+  .option.correct { background:#ecfdf5; border-color:#22c55e; color:#15803d; }
+  .option.wrong   { background:#fff1f2; border-color:#ef4444; color:#dc2626; }
+  .option.selected { background:#f0ebff; border-color:#7C3AED; color:#7C3AED; }
+  .option-check { width:22px; height:22px; border-radius:11px; border:1.5px solid #ddd; display:flex; align-items:center; justify-content:center; font-size:12px; }
+  .option.correct .option-check { background:#22c55e; border-color:#22c55e; color:#fff; }
+  .option.wrong   .option-check { background:#ef4444; border-color:#ef4444; color:#fff; }
+
+  .answer-feedback { margin:0 16px; padding:10px 14px; border-radius:10px; font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; }
+  .answer-feedback.correct { background:#ecfdf5; color:#15803d; }
+  .answer-feedback.wrong   { background:#fff1f2; color:#dc2626; }
+
+  .next-q-btn { margin:12px 16px; width:calc(100% - 32px); background:#7C3AED; color:#fff; border:none; border-radius:14px; padding:16px; font-size:15px; font-weight:700; cursor:pointer; }
+
+  /* IN-APP TOAST */
+  .toast-overlay { position:absolute; bottom:0; left:0; right:0; height:100%; pointer-events:none; z-index:300; }
+  .toast { position:absolute; bottom:90px; left:16px; right:16px; background:linear-gradient(135deg,#7C3AED,#a855f7); border-radius:20px; padding:18px 18px; pointer-events:all; box-shadow:0 8px 32px rgba(124,58,237,.4); animation:slideUp .4s cubic-bezier(.34,1.56,.64,1); display:flex; align-items:center; gap:14px; }
+  @keyframes slideUp { from{transform:translateY(120px);opacity:0} to{transform:translateY(0);opacity:1} }
+  .toast-emoji { font-size:36px; flex-shrink:0; }
+  .toast-text .toast-title { font-size:16px; font-weight:800; color:#fff; }
+  .toast-text .toast-body { font-size:13px; color:rgba(255,255,255,.85); margin-top:3px; }
+  .toast-close { position:absolute; top:10px; right:12px; color:rgba(255,255,255,.6); font-size:16px; cursor:pointer; }
+
+  /* ══════════════════════════════════════════
+     SCREEN 7 — NOTIFICATION PREFERENCES
+  ══════════════════════════════════════════ */
+  .pref-section { background:#fff; margin:12px 12px 0; border-radius:16px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+  .pref-section-header { padding:12px 16px 6px; }
+  .pref-section-header h3 { font-size:12px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:.5px; }
+  .pref-row { display:flex; align-items:center; padding:14px 16px; border-top:1px solid #f5f5f5; gap:14px; }
+  .pref-icon { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .pref-icon.purple { background:#f0ebff; }
+  .pref-icon.green  { background:#ecfdf5; }
+  .pref-icon.orange { background:#fff7ed; }
+  .pref-icon.blue   { background:#eff6ff; }
+  .pref-icon.red    { background:#fff1f2; }
+  .pref-info { flex:1; }
+  .pref-info strong { font-size:14px; color:#111; display:block; margin-bottom:2px; }
+  .pref-info span { font-size:12px; color:#aaa; }
+  .toggle { width:50px; height:28px; border-radius:14px; background:#E5E7EB; position:relative; cursor:pointer; flex-shrink:0; transition:background .2s; }
+  .toggle.on { background:#7C3AED; }
+  .toggle::after { content:''; position:absolute; width:22px; height:22px; border-radius:11px; background:#fff; top:3px; left:3px; transition:left .2s; box-shadow:0 2px 4px rgba(0,0,0,.2); }
+  .toggle.on::after { left:25px; }
+
+  /* ══════════════════════════════════════════
+     SCREEN 8 — WELCOME SPLASH (signup)
+  ══════════════════════════════════════════ */
+  #screen-welcome { background:linear-gradient(160deg,#1e1b4b 0%,#4c1d95 40%,#7C3AED 100%); }
+  #screen-welcome .status-bar { background:transparent; }
+  #screen-welcome .status-bar .time, #screen-welcome .status-bar .icons { color:#fff; }
+  .welcome-content { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 28px; text-align:center; }
+  .welcome-logo { font-size:56px; margin-bottom:8px; }
+  .welcome-brand { font-size:32px; font-weight:800; color:#fff; margin-bottom:4px; }
+  .welcome-brand span { color:#c4b5fd; }
+  .confetti-row { font-size:24px; margin-bottom:24px; letter-spacing:4px; }
+  .welcome-title { font-size:22px; font-weight:800; color:#fff; margin-bottom:12px; line-height:1.3; }
+  .welcome-body { font-size:15px; color:rgba(255,255,255,.75); line-height:1.6; margin-bottom:36px; }
+  .welcome-cta { width:100%; background:#fff; color:#7C3AED; border:none; border-radius:14px; padding:18px; font-size:17px; font-weight:800; cursor:pointer; margin-bottom:14px; }
+  .welcome-skip { color:rgba(255,255,255,.6); font-size:14px; cursor:pointer; }
+
+  /* ══════════════════════════════════════════
+     SCREEN 9 — RETENTION PUSH SCENARIO
+  ══════════════════════════════════════════ */
+  .retention-scene { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; background:#f5f5f5; }
+  .retention-phone-lock { background:linear-gradient(135deg,#1a1a2e,#2d1b69); width:100%; border-radius:24px; padding:28px 20px; margin-bottom:20px; }
+  .lock-time { font-size:52px; font-weight:200; color:#fff; margin-bottom:4px; }
+  .lock-date { font-size:14px; color:rgba(255,255,255,.6); margin-bottom:28px; }
+  .lock-notification { background:rgba(255,255,255,.12); backdrop-filter:blur(12px); border-radius:16px; padding:14px 16px; text-align:left; }
+  .lock-notif-header { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .lock-app-icon { width:24px; height:24px; background:#7C3AED; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:12px; }
+  .lock-app-name { font-size:12px; color:rgba(255,255,255,.7); font-weight:600; }
+  .lock-notif-time { font-size:11px; color:rgba(255,255,255,.5); margin-left:auto; }
+  .lock-notif-title { font-size:15px; font-weight:700; color:#fff; margin-bottom:4px; }
+  .lock-notif-body { font-size:13px; color:rgba(255,255,255,.75); line-height:1.4; }
+  .retention-stages { display:flex; flex-direction:column; gap:8px; width:100%; }
+  .ret-stage { background:#fff; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:12px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  .ret-stage-dot { width:10px; height:10px; border-radius:5px; flex-shrink:0; }
+  .ret-stage.s1 .ret-stage-dot { background:#22c55e; }
+  .ret-stage.s2 .ret-stage-dot { background:#f59e0b; }
+  .ret-stage.s3 .ret-stage-dot { background:#ef4444; }
+  .ret-stage.s4 .ret-stage-dot { background:#7C3AED; }
+  .ret-stage-info strong { font-size:13px; color:#111; display:block; }
+  .ret-stage-info span { font-size:12px; color:#888; }
+  .ret-stage-days { margin-left:auto; font-size:12px; font-weight:700; color:#888; }
+
+  /* ══════════════════════════════════════════
+     SCENE DESCRIPTION
+  ══════════════════════════════════════════ */
+  .scene-desc { margin-top:20px; max-width:375px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:14px 16px; color:#aaa; font-size:13px; line-height:1.6; text-align:left; }
+  .scene-desc strong { color:#e0c8ff; }
+
+  /* ── DIVIDER ── */
+  .section-divider { height:8px; background:#f5f5f5; }
+</style>
+</head>
+<body>
+
+<h1>brritto — End User Notification Prototype</h1>
+<p class="subtitle">Click a scene to preview how each notification type appears in the app</p>
+
+<div class="scene-bar">
+  <button class="scene-btn active" onclick="showScene('home')">🏠 Home + Badge</button>
+  <button class="scene-btn" onclick="showScene('push')">🔔 Push Banner</button>
+  <button class="scene-btn" onclick="showScene('inbox')">📬 Inbox Feed</button>
+  <button class="scene-btn" onclick="showScene('detail')">📄 Notif Detail</button>
+  <button class="scene-btn" onclick="showScene('splash')">🏆 Test Result Splash</button>
+  <button class="scene-btn" onclick="showScene('learn')">🔥 Learn Toast</button>
+  <button class="scene-btn" onclick="showScene('prefs')">⚙️ Preferences</button>
+  <button class="scene-btn" onclick="showScene('welcome')">🎉 Welcome Splash</button>
+  <button class="scene-btn" onclick="showScene('retention')">😔 Retention Push</button>
+</div>
+
+<div class="phone">
+  <div class="phone-inner">
+
+    <!-- STATUS BAR (shared) -->
+    <div class="status-bar" id="statusBar">
+      <span class="time">9:51</span>
+      <div class="icons">
+        <span>▲▲▲</span>
+        <span>WiFi</span>
+        <span style="background:#facc15;color:#000;padding:1px 5px;border-radius:4px;font-weight:700;">65</span>
+      </div>
+    </div>
+
+    <!-- ═══ SCREEN 1: HOME ═══ -->
+    <div class="screen active" id="screen-home" style="top:44px;">
+      <div class="scroll-area">
+        <div class="home-hero">
+          <div class="home-user">
+            <div class="avatar">👤</div>
+            <div class="user-info">
+              <h3>Fahim Muntashir</h3>
+              <p>HSC 🏫</p>
+            </div>
+            <div class="home-icons">🔍&nbsp;&nbsp;☰</div>
+          </div>
+          <div class="challenge-bar">
+            <div class="challenge-left">
+              <span>📖</span>
+              <p>New Challenge Awaits!</p>
+            </div>
+            <button class="no-exam-btn">No Exams</button>
+          </div>
+        </div>
+
+        <div class="tiles-grid">
+          <div class="tile"><div class="tile-icon">📚</div><div class="tile-name">My Course</div><div class="tile-sub">Knowledge hub</div></div>
+          <div class="tile"><div class="tile-icon">🧠</div><div class="tile-name">Learn</div><div class="tile-sub">Study vault</div></div>
+          <div class="tile"><div class="tile-icon">📝</div><div class="tile-name">Test</div><div class="tile-sub">Mock sets</div></div>
+          <div class="tile"><div class="tile-icon">🗂️</div><div class="tile-name">Archived Exam</div><div class="tile-sub">Exam vault</div></div>
+          <div class="tile"><div class="tile-icon">🤔</div><div class="tile-name">Doubt</div><div class="tile-sub">My doubts</div></div>
+          <div class="tile"><div class="tile-icon">👥</div><div class="tile-name">Study Circle</div><div class="tile-sub">Peer support</div></div>
+        </div>
+
+        <div class="home-banner">
+          <div class="banner-text">কলেজ অ্যাডমিশন<br>প্রশ্নব্যাঙ্ক 👉</div>
+          <div class="banner-icon">🎲</div>
+        </div>
+        <div style="height:20px;"></div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="nav-item active">
+          <div class="nav-icon">🏠</div>
+          <div class="nav-label">Home</div>
+        </div>
+        <div class="nav-item">
+          <div class="nav-icon">⬛</div>
+          <div class="nav-label">Scan</div>
+        </div>
+        <div class="nav-item">
+          <div class="nav-icon">🏆</div>
+          <div class="nav-label">Rank List</div>
+        </div>
+        <div class="nav-item" onclick="showScene('inbox')">
+          <div class="nav-icon">✉️</div>
+          <div class="nav-label">Inbox</div>
+          <div class="nav-badge">3</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SCREEN 2: PUSH BANNER ═══ -->
+    <div class="screen" id="screen-push" style="top:44px;">
+      <!-- blurred home behind -->
+      <div class="push-home-blur">
+        <div style="background:#f5f5f5;height:100%;display:flex;flex-direction:column;">
+          <div style="background:#fff;padding:16px 20px;"><div style="height:16px;background:#f0f0f0;border-radius:8px;width:60%;"></div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:16px;">
+            <div style="background:#fff;height:80px;border-radius:12px;"></div>
+            <div style="background:#fff;height:80px;border-radius:12px;"></div>
+            <div style="background:#fff;height:80px;border-radius:12px;"></div>
+            <div style="background:#fff;height:80px;border-radius:12px;"></div>
+            <div style="background:#fff;height:80px;border-radius:12px;"></div>
+            <div style="background:#fff;height:80px;border-radius:12px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Push notification banner -->
+      <div class="push-banner">
+        <div class="push-app-row">
+          <div class="push-app-icon">🎓</div>
+          <span class="push-app-name">brritto</span>
+          <span class="push-time">now</span>
+        </div>
+        <div class="push-title" id="pushTitle">ফলাফল প্রকাশিত! 🏆</div>
+        <div class="push-body" id="pushBody">HSC'26 MCQ Booster Round-02 এর ফলাফল দেখো — তুমি কত পেয়েছ?</div>
+        <div class="push-actions">
+          <button class="push-action-btn">পরে দেখব</button>
+          <button class="push-action-btn primary" onclick="showScene('detail')">ফলাফল দেখো →</button>
+        </div>
+      </div>
+
+      <!-- Variant switcher -->
+      <div class="push-variants">
+        <h4>Tap to preview different push types</h4>
+        <div class="variant-pill" onclick="setPush('ফলাফল প্রকাশিত! 🏆','HSC’ MCQ Booster Round-02 এর ফলাফল দেখো — তুমি কত পেয়েছ?')">
+          <strong>Live Exam — Result Published</strong>
+          <span>Event 8 · Auto trigger</span>
+        </div>
+        <div class="variant-pill" onclick="setPush('তোমার প্রশ্নের উত্তর এসেছে! ✅','\"গণিতের এই সমস্যাটি\" এর সমাধান পাওয়া গেছে। এখনই দেখো!')">
+          <strong>Doubt Solved 📖</strong>
+          <span>Event 6 · Auto trigger</span>
+        </div>
+        <div class="variant-pill" onclick="setPush('আগামীকাল পরীক্ষা! ⏰','HSC MCQ Booster আগামীকাল সকাল ১০টায় শুরু হবে। প্রস্তুত থেকো!')">
+          <strong>Live Exam Reminder ⏰</strong>
+          <span>Event 7 · 24h before</span>
+        </div>
+        <div class="variant-pill" onclick="setPush('কোর্সে ভর্তি সম্পন্ন! 🎓','তুমি HSC Physics Chapter Course এ ভর্তি হয়েছ। পড়াশোনা শুরু করো!')">
+          <strong>Course Enrolled 🎓</strong>
+          <span>Event 9 · Auto trigger</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SCREEN 3: INBOX ═══ -->
+    <div class="screen" id="screen-inbox" style="top:44px;">
+      <div class="app-header">
+        <div class="back-btn" onclick="showScene('home')">‹</div>
+        <h2>Inbox</h2>
+        <span class="header-action" onclick="markAllRead()">Mark all read</span>
+      </div>
+
+      <div class="tab-bar">
+        <div class="tab active" id="tabNotif" onclick="switchTab('notif')">Notification <span id="notifBadge" style="background:#7C3AED;color:#fff;border-radius:10px;padding:1px 6px;font-size:11px;margin-left:4px;">3</span></div>
+        <div class="tab" id="tabNotice" onclick="switchTab('notice')">Notice</div>
+      </div>
+
+      <div class="scroll-area" id="inboxScrollArea">
+        <div id="notifList">
+          <div class="inbox-meta">
+            <span>Today</span>
+            <a>Clear all</a>
+          </div>
+
+          <div class="notif-item unread" onclick="showScene('detail')" id="ni1">
+            <div class="notif-icon-wrap orange">🏆</div>
+            <div class="notif-content">
+              <div class="notif-title">ফলাফল প্রকাশিত! 🏆</div>
+              <div class="notif-body">HSC'26 MCQ Booster Round-02 এর ফলাফল দেখো — তুমি কত পেয়েছ?</div>
+              <div class="notif-time">2 min ago · Live Exam</div>
+            </div>
+            <div class="notif-dot"></div>
+          </div>
+
+          <div class="notif-item unread" id="ni2">
+            <div class="notif-icon-wrap green">✅</div>
+            <div class="notif-content">
+              <div class="notif-title">তোমার প্রশ্নের উত্তর এসেছে! ✅</div>
+              <div class="notif-body">"গণিতের এই সমস্যাটি" এর সমাধান পাওয়া গেছে। এখনই দেখো!</div>
+              <div class="notif-time">1 hr ago · Doubt</div>
+            </div>
+            <div class="notif-dot"></div>
+          </div>
+
+          <div class="notif-item unread" id="ni3">
+            <div class="notif-icon-wrap purple">🎓</div>
+            <div class="notif-content">
+              <div class="notif-title">কোর্সে ভর্তি সম্পন্ন! 🎓</div>
+              <div class="notif-body">তুমি HSC Physics Chapter Course এ ভর্তি হয়েছ। পড়াশোনা শুরু করো!</div>
+              <div class="notif-time">3 hr ago · Course</div>
+            </div>
+            <div class="notif-dot"></div>
+          </div>
+
+          <div class="inbox-meta" style="padding-top:16px;">
+            <span>Yesterday</span>
+          </div>
+
+          <div class="notif-item read" id="ni4">
+            <div class="notif-icon-wrap blue">⏰</div>
+            <div class="notif-content">
+              <div class="notif-title">আগামীকাল পরীক্ষা! ⏰</div>
+              <div class="notif-body">মাত্র ২৪ ঘণ্টা বাকি! HSC MCQ Booster — এখনই প্রস্তুতি নাও</div>
+              <div class="notif-time">Yesterday · Live Exam</div>
+            </div>
+            <div class="notif-dot"></div>
+          </div>
+
+          <div class="notif-item read" id="ni5">
+            <div class="notif-icon-wrap red">📦</div>
+            <div class="notif-content">
+              <div class="notif-title">তোমার জন্য নতুন কোর্স! 📚</div>
+              <div class="notif-body">তোমার পছন্দ অনুযায়ী এই কোর্সগুলো দেখো!</div>
+              <div class="notif-time">2 days ago · Recommendation</div>
+            </div>
+            <div class="notif-dot"></div>
+          </div>
+          <div style="height:12px;"></div>
+        </div>
+
+        <!-- NOTICE TAB CONTENT (hidden by default) -->
+        <div id="noticeList" style="display:none;">
+          <div class="inbox-meta"><span>Official Notices</span></div>
+          <div class="notif-item read">
+            <div class="notif-icon-wrap blue">📢</div>
+            <div class="notif-content">
+              <div class="notif-title">HSC পরীক্ষার নতুন সিলেবাস</div>
+              <div class="notif-body">২০২৬ সালের HSC পরীক্ষার আপডেট সিলেবাস প্রকাশিত হয়েছে।</div>
+              <div class="notif-time">Jun 1, 2026 · Official</div>
+            </div>
+            <div class="notif-dot"></div>
+          </div>
+          <div class="notif-item read">
+            <div class="notif-icon-wrap orange">🔔</div>
+            <div class="notif-content">
+              <div class="notif-title">App maintenance — June 10</div>
+              <div class="notif-body">June 10, 2:00–4:00 AM BST তে অ্যাপ সাময়িকভাবে বন্ধ থাকবে।</div>
+              <div class="notif-time">May 30, 2026 · System</div>
+            </div>
+            <div class="notif-dot"></div>
+          </div>
+          <div style="height:12px;"></div>
+        </div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="nav-item"><div class="nav-icon">🏠</div><div class="nav-label">Home</div></div>
+        <div class="nav-item"><div class="nav-icon">⬛</div><div class="nav-label">Scan</div></div>
+        <div class="nav-item"><div class="nav-icon">🏆</div><div class="nav-label">Rank List</div></div>
+        <div class="nav-item active">
+          <div class="nav-icon">✉️</div>
+          <div class="nav-label">Inbox</div>
+          <div class="nav-badge" id="inboxNavBadge">3</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SCREEN 4: NOTIFICATION DETAIL ═══ -->
+    <div class="screen" id="screen-detail" style="top:44px;">
+      <div class="app-header">
+        <div class="back-btn" onclick="showScene('inbox')">‹</div>
+        <h2>Notification</h2>
+      </div>
+      <div class="scroll-area">
+        <div class="notif-detail-hero">
+          <span class="big-icon">🏆</span>
+          <h2>ফলাফল প্রকাশিত!</h2>
+        </div>
+        <div class="notif-detail-body">
+          <p>HSC'26 MCQ Booster: তথ্য ও যোগাযোগ প্রযুক্তি পূর্ণাঙ্গ মডেল টেস্ট Round-02 এর ফলাফল এখন প্রকাশিত হয়েছে। তুমি কত পেয়েছ দেখো!</p>
+        </div>
+        <div class="notif-detail-meta">
+          <div class="meta-chip">🎯 Live Exam</div>
+          <div class="meta-chip">⏱ Just now</div>
+          <div class="meta-chip">📲 Push + Inbox</div>
+        </div>
+        <div class="cta-area">
+          <button class="cta-btn" onclick="showScene('splash')">🏆&nbsp; ফলাফল দেখো</button>
+        </div>
+        <div style="height:24px;"></div>
+      </div>
+      <div class="bottom-nav">
+        <div class="nav-item"><div class="nav-icon">🏠</div><div class="nav-label">Home</div></div>
+        <div class="nav-item"><div class="nav-icon">⬛</div><div class="nav-label">Scan</div></div>
+        <div class="nav-item"><div class="nav-icon">🏆</div><div class="nav-label">Rank List</div></div>
+        <div class="nav-item active"><div class="nav-icon">✉️</div><div class="nav-label">Inbox</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ SCREEN 5: TEST RESULT SPLASH ═══ -->
+    <div class="screen" id="screen-splash" style="top:44px;background:linear-gradient(160deg,#4c1d95 0%,#7C3AED 50%,#a855f7 100%);">
+      <div class="splash-content">
+        <div class="splash-badge">তথ্য ও যোগাযোগ প্রযুক্তি — Round 02</div>
+        <div class="splash-icon">🏆</div>
+        <div class="splash-title">অসাধারণ ফলাফল!</div>
+        <div class="splash-body">তুমি ৮৪% পেয়েছ! অসাধারণ 🏆 তোমার পরিশ্রম সফল হয়েছে।</div>
+        <div class="splash-score-row">
+          <div class="score-card"><div class="sc-num" style="color:#4ade80;">21</div><div class="sc-lbl">Correct ✓</div></div>
+          <div class="score-card"><div class="sc-num" style="color:#f87171;">4</div><div class="sc-lbl">Wrong ✗</div></div>
+          <div class="score-card"><div class="sc-num">84%</div><div class="sc-lbl">Score</div></div>
+        </div>
+        <button class="splash-cta" onclick="showScene('detail')">📊 বিস্তারিত দেখো</button>
+        <button class="splash-secondary" onclick="showScene('inbox')">← ফিরে যাও</button>
+      </div>
+    </div>
+
+    <!-- ═══ SCREEN 6: LEARN + TOAST ═══ -->
+    <div class="screen" id="screen-learn" style="top:44px;">
+      <div class="learn-header" style="background:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 0 #f0f0f0;">
+        <div style="font-size:18px;color:#333;cursor:pointer;">‹</div>
+        <div style="flex:1;font-size:15px;font-weight:700;color:#111;">তথ্য ও যোগাযোগ প্রযুক্তি</div>
+        <div style="display:flex;gap:8px;">
+          <div style="width:32px;height:32px;background:#f0ebff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;">⏸</div>
+          <div style="width:32px;height:32px;background:#f0ebff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;">↺</div>
+        </div>
+      </div>
+      <div class="learn-progress-row">
+        <span style="font-weight:700;color:#111;">10 /3653</span>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0.3%;"></div></div>
+        <span>0%</span>
+      </div>
+
+      <div class="scroll-area">
+        <div class="question-card">
+          <div class="q-num">প্রশ্ন ১০</div>
+          <div class="q-text">ই-লার্নিং পদ্ধতিতে শিক্ষার্থী ও শিক্ষকের মধ্যে কোন ধরনের যোগাযোগ হয়?</div>
+        </div>
+
+        <div class="answer-options">
+          <div class="option wrong">(A) মুখোমুখি যোগাযোগ <div class="option-check">✕</div></div>
+          <div class="option correct">(B) ভার্চুয়াল যোগাযোগ <div class="option-check">✓</div></div>
+          <div class="option">(C) টেলিফোন যোগাযোগ <div class="option-check"></div></div>
+          <div class="option">(D) কোনো যোগাযোগ নেই <div class="option-check"></div></div>
+        </div>
+
+        <div class="answer-feedback correct">✓&nbsp; Correct! &nbsp;<span style="font-weight:400;color:#555;font-size:12px;">See Explanation ↗</span></div>
+        <button class="next-q-btn">Next Question</button>
+        <div style="height:100px;"></div>
+      </div>
+
+      <!-- IN-APP TOAST -->
+      <div class="toast-overlay" id="learnToastOverlay">
+        <div class="toast" id="learnToast">
+          <div class="toast-emoji">🔥</div>
+          <div class="toast-text">
+            <div class="toast-title">একটানা ১০টি সঠিক! 🎯</div>
+            <div class="toast-body">একটানা ১০টি সঠিক! চালিয়ে যাও, তুমি দারুণ করছ!</div>
+          </div>
+          <div class="toast-close" onclick="dismissToast()">✕</div>
+        </div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="nav-item active"><div class="nav-icon">🏠</div><div class="nav-label">Home</div></div>
+        <div class="nav-item"><div class="nav-icon">⬛</div><div class="nav-label">Scan</div></div>
+        <div class="nav-item"><div class="nav-icon">🏆</div><div class="nav-label">Rank List</div></div>
+        <div class="nav-item"><div class="nav-icon">✉️</div><div class="nav-label">Inbox</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ SCREEN 7: PREFERENCES ═══ -->
+    <div class="screen" id="screen-prefs" style="top:44px;">
+      <div class="app-header">
+        <div class="back-btn" onclick="showScene('home')">‹</div>
+        <h2>Notification Settings</h2>
+      </div>
+      <div class="scroll-area">
+        <div style="padding:12px 12px 0;">
+          <div style="background:#f0ebff;border-radius:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="font-size:15px;font-weight:700;color:#111;">Push Notifications</div>
+              <div style="font-size:13px;color:#888;margin-top:2px;">Master on/off switch</div>
+            </div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+
+        <div class="pref-section">
+          <div class="pref-section-header"><h3>By Category</h3></div>
+          <div class="pref-row">
+            <div class="pref-icon purple">🎓</div>
+            <div class="pref-info"><strong>Onboarding</strong><span>Welcome, profile, signup</span></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="pref-row">
+            <div class="pref-icon green">🧠</div>
+            <div class="pref-info"><strong>Learn Activity</strong><span>Streak milestones (in-app only)</span></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="pref-row">
+            <div class="pref-icon blue">⏰</div>
+            <div class="pref-info"><strong>Live Exam</strong><span>Reminders & results</span></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="pref-row">
+            <div class="pref-icon orange">✅</div>
+            <div class="pref-info"><strong>Doubt</strong><span>When your doubt is answered</span></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="pref-row">
+            <div class="pref-icon purple">📚</div>
+            <div class="pref-info"><strong>Course</strong><span>Enrollment, completion, recommendations</span></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="pref-row">
+            <div class="pref-icon red">💔</div>
+            <div class="pref-info"><strong>Re-engagement</strong><span>Inactive reminders</span></div>
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="pref-row">
+            <div class="pref-icon orange">💳</div>
+            <div class="pref-info"><strong>Subscription</strong><span>Expiry, offers, trial</span></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+
+        <div class="pref-section" style="margin-top:12px;">
+          <div class="pref-section-header"><h3>Daily Limit</h3></div>
+          <div class="pref-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
+            <div style="font-size:14px;color:#333;">Maximum push notifications per day</div>
+            <div style="display:flex;gap:8px;">
+              <div style="background:#f0ebff;color:#7C3AED;border-radius:8px;padding:8px 16px;font-size:14px;font-weight:700;">5/day</div>
+              <div style="background:#f5f5f5;color:#888;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:500;">Live exam events are exempt</div>
+            </div>
+          </div>
+        </div>
+        <div style="height:20px;"></div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="nav-item"><div class="nav-icon">🏠</div><div class="nav-label">Home</div></div>
+        <div class="nav-item"><div class="nav-icon">⬛</div><div class="nav-label">Scan</div></div>
+        <div class="nav-item"><div class="nav-icon">🏆</div><div class="nav-label">Rank List</div></div>
+        <div class="nav-item"><div class="nav-icon">✉️</div><div class="nav-label">Inbox</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ SCREEN 8: WELCOME SPLASH ═══ -->
+    <div class="screen" id="screen-welcome" style="top:44px;background:linear-gradient(160deg,#1e1b4b 0%,#4c1d95 40%,#7C3AED 100%);">
+      <div class="welcome-content">
+        <div class="welcome-logo">🎓</div>
+        <div class="welcome-brand">br<span>rito</span></div>
+        <div class="confetti-row">🎉🎊✨🎈🎉</div>
+        <div class="welcome-title">Welcome to brritto,<br>Fahim! 🎉</div>
+        <div class="welcome-body">হাই Fahim, brritto-তে স্বাগতম! 🎉<br>চলো, পড়াশোনাকে সহজ করি।</div>
+        <button class="welcome-cta" onclick="showScene('home')">Start Learning →</button>
+        <div class="welcome-skip" onclick="showScene('home')">Skip for now</div>
+      </div>
+    </div>
+
+    <!-- ═══ SCREEN 9: RETENTION PUSH ═══ -->
+    <div class="screen" id="screen-retention" style="top:44px;">
+      <div class="app-header" style="background:#f5f5f5;box-shadow:none;">
+        <div class="back-btn" onclick="showScene('home')">‹</div>
+        <h2 style="font-size:14px;color:#888;">Retention Notification Flow</h2>
+      </div>
+
+      <div class="scroll-area" style="padding:12px;">
+        <!-- Lock screen style notification -->
+        <div class="retention-phone-lock">
+          <div class="lock-time">10:03</div>
+          <div class="lock-date">Thursday, June 4</div>
+          <div class="lock-notification">
+            <div class="lock-notif-header">
+              <div class="lock-app-icon">🎓</div>
+              <span class="lock-app-name">brritto</span>
+              <span class="lock-notif-time">10:03 AM</span>
+            </div>
+            <div class="lock-notif-title" id="retTitle">৩ দিন হয়ে গেছে! 😟</div>
+            <div class="lock-notif-body" id="retBody">পরীক্ষার জন্য সময় কম। আজই একটু পড়ো! 📖</div>
+          </div>
+        </div>
+
+        <!-- Stage selector -->
+        <div style="font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px;">Tap a stage to preview message</div>
+        <div class="retention-stages">
+          <div class="ret-stage s1" onclick="setRetention(1)">
+            <div class="ret-stage-dot"></div>
+            <div class="ret-stage-info"><strong>Stage 1 — Gentle Nudge</strong><span>তোমাকে মিস করছি! 😔</span></div>
+            <div class="ret-stage-days">1 day</div>
+          </div>
+          <div class="ret-stage s2" onclick="setRetention(2)" style="border:2px solid #f59e0b;">
+            <div class="ret-stage-dot"></div>
+            <div class="ret-stage-info"><strong>Stage 2 — Urgency</strong><span>৩ দিন হয়ে গেছে! 😟</span></div>
+            <div class="ret-stage-days">3 days</div>
+          </div>
+          <div class="ret-stage s3" onclick="setRetention(3)">
+            <div class="ret-stage-dot"></div>
+            <div class="ret-stage-info"><strong>Stage 3 — Alarm</strong><span>১ সপ্তাহ পার হয়ে গেছে! 😢</span></div>
+            <div class="ret-stage-days">7 days</div>
+          </div>
+          <div class="ret-stage s4" onclick="setRetention(4)">
+            <div class="ret-stage-dot"></div>
+            <div class="ret-stage-info"><strong>Stage 4 — Last Resort</strong><span>দুই সপ্তাহ চলে গেছে! 💔</span></div>
+            <div class="ret-stage-days">14 days</div>
+          </div>
+        </div>
+
+        <div style="background:#fff;border-radius:12px;padding:14px;margin-top:12px;font-size:13px;color:#666;line-height:1.6;box-shadow:0 1px 4px rgba(0,0,0,.05);">
+          <strong style="color:#111;display:block;margin-bottom:6px;">ℹ️ How it works</strong>
+          Each stage fires once when the student hasn't opened the app for the threshold days. All stages reset when the student opens the app. No stage fires twice on the same day.
+        </div>
+        <div style="height:12px;"></div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="nav-item active"><div class="nav-icon">🏠</div><div class="nav-label">Home</div></div>
+        <div class="nav-item"><div class="nav-icon">⬛</div><div class="nav-label">Scan</div></div>
+        <div class="nav-item"><div class="nav-icon">🏆</div><div class="nav-label">Rank List</div></div>
+        <div class="nav-item"><div class="nav-icon">✉️</div><div class="nav-label">Inbox</div></div>
+      </div>
+    </div>
+
+  </div><!-- phone-inner -->
+</div><!-- phone -->
+
+<!-- SCENE DESCRIPTION -->
+<div class="scene-desc" id="sceneDesc">
+  <strong>🏠 Home — Unread Badge</strong><br>
+  The red <strong>3</strong> badge on the Inbox tab shows the unread notification count. Updated in real time via <code>GET /notifications/unread-count</code>. Tap Inbox to see the full list.
+</div>
+
+<script>
+const scenes = {
+  home:      { id:'screen-home',      sb:'#fff',  sbText:'#111', desc:'<strong>🏠 Home — Unread Badge</strong><br>The red <strong>3</strong> badge on the Inbox tab shows the unread count. Updated via <code>GET /notifications/unread-count</code>. Tap Inbox to see the full list.' },
+  push:      { id:'screen-push',      sb:'#fff',  sbText:'#111', desc:'<strong>🔔 Push Notification Banner</strong><br>OS-level notification drops from the top while the app is open or in background. Tap the variant pills below to preview different event types. CTA deep-links directly to the relevant screen.' },
+  inbox:     { id:'screen-inbox',     sb:'#fff',  sbText:'#111', desc:'<strong>📬 Inbox — Notification Feed</strong><br>Two tabs: <strong>Notification</strong> (event-triggered, per-user) and <strong>Notice</strong> (admin broadcasts). Unread items have a purple left-bar and bold title. "Mark all read" calls <code>PATCH /notifications/read-all</code>. TTL: 90 days.' },
+  detail:    { id:'screen-detail',    sb:'#fff',  sbText:'#111', desc:'<strong>📄 Notification Detail Screen</strong><br>Tapping any inbox item opens the full message with CTA button. The button is the deep-link action — <code>brritto://live-exam/:examId/results</code> — routing directly to the result screen.' },
+  splash:    { id:'screen-splash',    sb:'transparent', sbText:'#fff', desc:'<strong>🏆 Splash Screen — Test Result</strong><br>Full-screen interstitial shown when test result is ready. Used for Event 5 (Test Result) and Event 1 (Welcome). Score breakdown is rendered from the exam_results collection. CTA links to detailed answer sheet.' },
+  learn:     { id:'screen-learn',     sb:'#fff',  sbText:'#111', desc:'<strong>🔥 Learn Activity Toast (In-App)</strong><br>Ephemeral toast triggered by a server-response flag on the answer API — NOT stored in the notifications collection, NOT sent via FCM. Fires at 5, 10, 20 correct/attempt milestones. Disappears after ~4 seconds or on dismiss.' },
+  prefs:     { id:'screen-prefs',     sb:'#fff',  sbText:'#111', desc:'<strong>⚙️ Notification Preferences</strong><br>Accessible from Settings → Notifications. Master push toggle + per-category mutes. Changes call <code>PATCH /notifications/preferences</code>. Daily cap info shown. Live exam events are always delivered (cap-exempt).' },
+  welcome:   { id:'screen-welcome',   sb:'transparent', sbText:'#fff', desc:'<strong>🎉 Welcome Splash — Event 1</strong><br>Auto-fires instantly on signup completion. Splash + Push combination. Personalised with <code>{{student_name}}</code>. One randomly selected variant pair from 3 options. CTA: "Start Learning" → <code>brritto://home</code>.' },
+  retention: { id:'screen-retention', sb:'#f5f5f5', sbText:'#111', desc:'<strong>😔 Retention — Multi-Stage Escalation</strong><br>4 stages fire progressively as inactivity grows (1→3→7→14 days). Each stage has its own Bengali copy variant pairs. Cron runs daily at 10 AM. All stages reset on any app open. Shown as a lock-screen notification.' },
+};
+
+let unreadCount = 3;
+
+function showScene(key) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.scene-btn').forEach(b => b.classList.remove('active'));
+
+  const sc = scenes[key];
+  document.getElementById(sc.id).classList.add('active');
+  document.getElementById('sceneDesc').innerHTML = sc.desc;
+
+  // find matching button
+  document.querySelectorAll('.scene-btn').forEach(b => {
+    if(b.getAttribute('onclick') && b.getAttribute('onclick').includes("'"+key+"'")) b.classList.add('active');
+  });
+
+  // status bar color
+  const sb = document.getElementById('statusBar');
+  sb.style.background = sc.sb === 'transparent' ? 'transparent' : sc.sb;
+  sb.style.color = sc.sbText;
+  sb.querySelectorAll('.time, .icons').forEach(el => el.style.color = sc.sbText);
+  sb.style.position = (sc.sb === 'transparent') ? 'absolute' : 'relative';
+  sb.style.zIndex = (sc.sb === 'transparent') ? '100' : '';
+  sb.style.width = '100%';
+}
+
+function setPush(title, body) {
+  document.getElementById('pushTitle').textContent = title;
+  document.getElementById('pushBody').textContent = body;
+  // animate
+  const banner = document.querySelector('.push-banner');
+  banner.style.animation = 'none';
+  banner.offsetHeight; // reflow
+  banner.style.animation = 'slideDown .35s cubic-bezier(.34,1.56,.64,1)';
+}
+
+function switchTab(tab) {
+  document.getElementById('tabNotif').classList.toggle('active', tab==='notif');
+  document.getElementById('tabNotice').classList.toggle('active', tab==='notice');
+  document.getElementById('notifList').style.display = tab==='notif' ? 'block' : 'none';
+  document.getElementById('noticeList').style.display = tab==='notice' ? 'block' : 'none';
+}
+
+function markAllRead() {
+  document.querySelectorAll('.notif-item.unread').forEach(el => {
+    el.classList.remove('unread');
+    el.classList.add('read');
+    const dot = el.querySelector('.notif-dot');
+    if(dot) dot.style.background = 'transparent';
+    const title = el.querySelector('.notif-title');
+    if(title) { title.style.fontWeight='500'; title.style.color='#444'; }
+  });
+  unreadCount = 0;
+  const badge = document.getElementById('notifBadge');
+  const navBadge = document.getElementById('inboxNavBadge');
+  if(badge) badge.style.display = 'none';
+  if(navBadge) navBadge.style.display = 'none';
+}
+
+function dismissToast() {
+  const t = document.getElementById('learnToast');
+  t.style.animation = 'none';
+  t.style.transform = 'translateY(120px)';
+  t.style.opacity = '0';
+  t.style.transition = 'all .3s ease';
+}
+
+const retData = {
+  1: { title:'তোমাকে মিস করছি! 😔', body:'আজ পড়াশোনা করোনি। একটু পড়লে কেমন হয়?' },
+  2: { title:'৩ দিন হয়ে গেছে! 😟', body:'পরীক্ষার জন্য সময় কম। আজই একটু পড়ো! 📖' },
+  3: { title:'১ সপ্তাহ পার হয়ে গেছে! 😢', body:'তোমার লক্ষ্য পূরণ করতে আজই ফিরে এসো!' },
+  4: { title:'দুই সপ্তাহ চলে গেছে! 💔', body:'প্রতিযোগীরা এগিয়ে যাচ্ছে। তুমি কি পিছিয়ে থাকবে?' },
+};
+function setRetention(stage) {
+  document.getElementById('retTitle').textContent = retData[stage].title;
+  document.getElementById('retBody').textContent  = retData[stage].body;
+  document.querySelectorAll('.ret-stage').forEach(el => el.style.border='');
+  const colors = {1:'#22c55e',2:'#f59e0b',3:'#ef4444',4:'#7C3AED'};
+  document.querySelectorAll('.ret-stage')[stage-1].style.border = `2px solid ${colors[stage]}`;
+}
+</script>
+</body>
+</html>

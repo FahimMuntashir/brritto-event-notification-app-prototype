@@ -1,0 +1,22 @@
+# Credentials & project config
+CLAUDE.md
+
+# OS
+.DS_Store
+
+# Screenshots & images
+*.webp
+*.jpeg
+*.jpg
+*.png
+
+# Office docs
+*.docx
+*.xlsx
+
+# Python scripts
+generate_*.py
+
+# Folders
+App Current UI/
+Final PRDs*/
