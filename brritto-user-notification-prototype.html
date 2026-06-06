@@ -401,19 +401,19 @@
       <!-- Variant switcher -->
       <div class="push-variants">
         <h4>Tap to preview different push types</h4>
-        <div class="variant-pill" onclick="setPush('ফলাফল প্রকাশিত! 🏆','HSC’ MCQ Booster Round-02 এর ফলাফল দেখো — তুমি কত পেয়েছ?')">
+        <div class="variant-pill" onclick="setPushByKey(‘result’)">
           <strong>Live Exam — Result Published</strong>
           <span>Event 8 · Auto trigger</span>
         </div>
-        <div class="variant-pill" onclick="setPush('তোমার প্রশ্নের উত্তর এসেছে! ✅','\"গণিতের এই সমস্যাটি\" এর সমাধান পাওয়া গেছে। এখনই দেখো!')">
+        <div class="variant-pill" onclick="setPushByKey(‘doubt’)">
           <strong>Doubt Solved 📖</strong>
           <span>Event 6 · Auto trigger</span>
         </div>
-        <div class="variant-pill" onclick="setPush('আগামীকাল পরীক্ষা! ⏰','HSC MCQ Booster আগামীকাল সকাল ১০টায় শুরু হবে। প্রস্তুত থেকো!')">
+        <div class="variant-pill" onclick="setPushByKey(‘reminder’)">
           <strong>Live Exam Reminder ⏰</strong>
           <span>Event 7 · 24h before</span>
         </div>
-        <div class="variant-pill" onclick="setPush('কোর্সে ভর্তি সম্পন্ন! 🎓','তুমি HSC Physics Chapter Course এ ভর্তি হয়েছ। পড়াশোনা শুরু করো!')">
+        <div class="variant-pill" onclick="setPushByKey(‘course’)">
           <strong>Course Enrolled 🎓</strong>
           <span>Event 9 · Auto trigger</span>
         </div>
@@ -437,7 +437,7 @@
         <div id="notifList">
           <div class="inbox-meta">
             <span>Today</span>
-            <a>Clear all</a>
+            <span style="font-size:11px;color:#ccc;">Auto-removes after 60 days</span>
           </div>
 
           <div class="notif-item unread" onclick="showScene('detail')" id="ni1">
@@ -584,45 +584,31 @@
 
     <!-- ═══ SCREEN 6: LEARN + TOAST ═══ -->
     <div class="screen" id="screen-learn" style="top:44px;">
-      <div class="learn-header" style="background:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 0 #f0f0f0;">
-        <div style="font-size:18px;color:#333;cursor:pointer;">‹</div>
+      <div style="background:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 0 #f0f0f0;flex-shrink:0;">
+        <div style="font-size:18px;color:#333;cursor:pointer;" onclick="showScene('home')">‹</div>
         <div style="flex:1;font-size:15px;font-weight:700;color:#111;">তথ্য ও যোগাযোগ প্রযুক্তি</div>
         <div style="display:flex;gap:8px;">
           <div style="width:32px;height:32px;background:#f0ebff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;">⏸</div>
           <div style="width:32px;height:32px;background:#f0ebff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;">↺</div>
         </div>
       </div>
-      <div class="learn-progress-row">
-        <span style="font-weight:700;color:#111;">10 /3653</span>
-        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0.3%;"></div></div>
-        <span>0%</span>
+      <div class="learn-progress-row" style="flex-shrink:0;">
+        <span id="learnCounter" style="font-weight:700;color:#111;white-space:nowrap;">1 /12</span>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" id="learnProgressBar" style="width:8%;"></div></div>
+        <span id="learnPct">8%</span>
       </div>
 
-      <div class="scroll-area">
-        <div class="question-card">
-          <div class="q-num">প্রশ্ন ১০</div>
-          <div class="q-text">ই-লার্নিং পদ্ধতিতে শিক্ষার্থী ও শিক্ষকের মধ্যে কোন ধরনের যোগাযোগ হয়?</div>
-        </div>
-
-        <div class="answer-options">
-          <div class="option wrong">(A) মুখোমুখি যোগাযোগ <div class="option-check">✕</div></div>
-          <div class="option correct">(B) ভার্চুয়াল যোগাযোগ <div class="option-check">✓</div></div>
-          <div class="option">(C) টেলিফোন যোগাযোগ <div class="option-check"></div></div>
-          <div class="option">(D) কোনো যোগাযোগ নেই <div class="option-check"></div></div>
-        </div>
-
-        <div class="answer-feedback correct">✓&nbsp; Correct! &nbsp;<span style="font-weight:400;color:#555;font-size:12px;">See Explanation ↗</span></div>
-        <button class="next-q-btn">Next Question</button>
-        <div style="height:100px;"></div>
+      <div class="scroll-area" id="learnScrollArea">
+        <!-- rendered by renderQuestion() -->
       </div>
 
       <!-- IN-APP TOAST -->
-      <div class="toast-overlay" id="learnToastOverlay">
-        <div class="toast" id="learnToast">
-          <div class="toast-emoji">🔥</div>
+      <div class="toast-overlay" id="learnToastOverlay" style="pointer-events:none;">
+        <div class="toast" id="learnToast" style="display:none;">
+          <div class="toast-emoji" id="toastEmoji">🔥</div>
           <div class="toast-text">
-            <div class="toast-title">একটানা ১০টি সঠিক! 🎯</div>
-            <div class="toast-body">একটানা ১০টি সঠিক! চালিয়ে যাও, তুমি দারুণ করছ!</div>
+            <div class="toast-title" id="toastTitle"></div>
+            <div class="toast-body" id="toastBody"></div>
           </div>
           <div class="toast-close" onclick="dismissToast()">✕</div>
         </div>
@@ -799,89 +785,219 @@
 </div>
 
 <script>
+// ── SCENE CONFIG ──────────────────────────────────────────────
 const scenes = {
-  home:      { id:'screen-home',      sb:'#fff',  sbText:'#111', desc:'<strong>🏠 Home — Unread Badge</strong><br>The red <strong>3</strong> badge on the Inbox tab shows the unread count. Updated via <code>GET /notifications/unread-count</code>. Tap Inbox to see the full list.' },
-  push:      { id:'screen-push',      sb:'#fff',  sbText:'#111', desc:'<strong>🔔 Push Notification Banner</strong><br>OS-level notification drops from the top while the app is open or in background. Tap the variant pills below to preview different event types. CTA deep-links directly to the relevant screen.' },
-  inbox:     { id:'screen-inbox',     sb:'#fff',  sbText:'#111', desc:'<strong>📬 Inbox — Notification Feed</strong><br>Two tabs: <strong>Notification</strong> (event-triggered, per-user) and <strong>Notice</strong> (admin broadcasts). Unread items have a purple left-bar and bold title. "Mark all read" calls <code>PATCH /notifications/read-all</code>. TTL: 90 days.' },
-  detail:    { id:'screen-detail',    sb:'#fff',  sbText:'#111', desc:'<strong>📄 Notification Detail Screen</strong><br>Tapping any inbox item opens the full message with CTA button. The button is the deep-link action — <code>brritto://live-exam/:examId/results</code> — routing directly to the result screen.' },
-  splash:    { id:'screen-splash',    sb:'transparent', sbText:'#fff', desc:'<strong>🏆 Splash Screen — Test Result</strong><br>Full-screen interstitial shown when test result is ready. Used for Event 5 (Test Result) and Event 1 (Welcome). Score breakdown is rendered from the exam_results collection. CTA links to detailed answer sheet.' },
-  learn:     { id:'screen-learn',     sb:'#fff',  sbText:'#111', desc:'<strong>🔥 Learn Activity Toast (In-App)</strong><br>Ephemeral toast triggered by a server-response flag on the answer API — NOT stored in the notifications collection, NOT sent via FCM. Fires at 5, 10, 20 correct/attempt milestones. Disappears after ~4 seconds or on dismiss.' },
-  prefs:     { id:'screen-prefs',     sb:'#fff',  sbText:'#111', desc:'<strong>⚙️ Notification Preferences</strong><br>Accessible from Settings → Notifications. Master push toggle + per-category mutes. Changes call <code>PATCH /notifications/preferences</code>. Daily cap info shown. Live exam events are always delivered (cap-exempt).' },
-  welcome:   { id:'screen-welcome',   sb:'transparent', sbText:'#fff', desc:'<strong>🎉 Welcome Splash — Event 1</strong><br>Auto-fires instantly on signup completion. Splash + Push combination. Personalised with <code>{{student_name}}</code>. One randomly selected variant pair from 3 options. CTA: "Start Learning" → <code>brritto://home</code>.' },
-  retention: { id:'screen-retention', sb:'#f5f5f5', sbText:'#111', desc:'<strong>😔 Retention — Multi-Stage Escalation</strong><br>4 stages fire progressively as inactivity grows (1→3→7→14 days). Each stage has its own Bengali copy variant pairs. Cron runs daily at 10 AM. All stages reset on any app open. Shown as a lock-screen notification.' },
+  home:      { id:'screen-home',      sb:'#fff',         sbText:'#111', desc:'<strong>🏠 Home — Unread Badge</strong><br>The red <strong>3</strong> badge on the Inbox tab shows the unread count. Updated via <code>GET /notifications/unread-count</code>. Tap Inbox to see the full list.' },
+  push:      { id:'screen-push',      sb:'#fff',         sbText:'#111', desc:'<strong>🔔 Push Notification Banner</strong><br>OS-level notification drops from the top while the app is open or in background. Tap a variant pill to preview different event types. CTA deep-links directly to the relevant screen.' },
+  inbox:     { id:'screen-inbox',     sb:'#fff',         sbText:'#111', desc:'<strong>📬 Inbox — Notification Feed</strong><br>Two tabs: <strong>Notification</strong> (event-triggered, per-user) and <strong>Notice</strong> (admin broadcasts). Unread items have a purple left-bar and bold title. Notifications auto-remove after 60 days (MongoDB TTL index).' },
+  detail:    { id:'screen-detail',    sb:'#fff',         sbText:'#111', desc:'<strong>📄 Notification Detail Screen</strong><br>Tapping any inbox item opens the full message with CTA button. The button deep-links to <code>brritto://live-exam/:examId/results</code> — routing directly to the result screen.' },
+  splash:    { id:'screen-splash',    sb:'transparent',  sbText:'#fff', desc:'<strong>🏆 Splash Screen — Test Result</strong><br>Full-screen interstitial shown when test result is ready. Used for Event 5 (Test Result) and Event 1 (Welcome). Score breakdown rendered from exam_results collection.' },
+  learn:     { id:'screen-learn',     sb:'#fff',         sbText:'#111', desc:'<strong>🔥 Learn Activity Toast (In-App)</strong><br>Answer questions and watch the toast fire automatically at milestones: <strong>5 attempts</strong>, <strong>10 attempts</strong>, <strong>20 attempts</strong>. Ephemeral — NOT stored in inbox, NOT sent via FCM. Triggered by server-response flag on the answer API.' },
+  prefs:     { id:'screen-prefs',     sb:'#fff',         sbText:'#111', desc:'<strong>⚙️ Notification Preferences</strong><br>Master push toggle + per-category mutes. Changes call <code>PATCH /notifications/preferences</code>. Daily cap: 5/day. Live exam events are always delivered (cap-exempt).' },
+  welcome:   { id:'screen-welcome',   sb:'transparent',  sbText:'#fff', desc:'<strong>🎉 Welcome Splash — Event 1</strong><br>Auto-fires instantly on signup completion. Splash + Push. Personalised with <code>{{student_name}}</code>. One randomly selected variant pair. CTA: "Start Learning" → <code>brritto://home</code>.' },
+  retention: { id:'screen-retention', sb:'#f5f5f5',      sbText:'#111', desc:'<strong>😔 Retention — Multi-Stage Escalation</strong><br>4 stages fire as inactivity grows (1→3→7→14 days). Each stage has its own Bengali copy. Cron runs daily 10 AM. All stages reset on any app open.' },
 };
 
-let unreadCount = 3;
+// ── PUSH VARIANT DATA (safe — no inline HTML attribute quotes issue) ──
+const pushVariants = {
+  result:   { title:'ফলাফল প্রকাশিত! 🏆',           body:'HSC\'26 MCQ Booster Round-02 এর ফলাফল দেখো — তুমি কত পেয়েছ?' },
+  doubt:    { title:'তোমার প্রশ্নের উত্তর এসেছে! ✅', body:'"গণিতের এই সমস্যাটি" এর সমাধান পাওয়া গেছে। এখনই দেখো!' },
+  reminder: { title:'আগামীকাল পরীক্ষা! ⏰',           body:'HSC MCQ Booster আগামীকাল সকাল ১০টায় শুরু হবে। প্রস্তুত থেকো!' },
+  course:   { title:'কোর্সে ভর্তি সম্পন্ন! 🎓',       body:'তুমি HSC Physics Chapter Course এ ভর্তি হয়েছ। পড়াশোনা শুরু করো!' },
+};
 
-function showScene(key) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.scene-btn').forEach(b => b.classList.remove('active'));
-
-  const sc = scenes[key];
-  document.getElementById(sc.id).classList.add('active');
-  document.getElementById('sceneDesc').innerHTML = sc.desc;
-
-  // find matching button
-  document.querySelectorAll('.scene-btn').forEach(b => {
-    if(b.getAttribute('onclick') && b.getAttribute('onclick').includes("'"+key+"'")) b.classList.add('active');
-  });
-
-  // status bar color
-  const sb = document.getElementById('statusBar');
-  sb.style.background = sc.sb === 'transparent' ? 'transparent' : sc.sb;
-  sb.style.color = sc.sbText;
-  sb.querySelectorAll('.time, .icons').forEach(el => el.style.color = sc.sbText);
-  sb.style.position = (sc.sb === 'transparent') ? 'absolute' : 'relative';
-  sb.style.zIndex = (sc.sb === 'transparent') ? '100' : '';
-  sb.style.width = '100%';
-}
-
-function setPush(title, body) {
-  document.getElementById('pushTitle').textContent = title;
-  document.getElementById('pushBody').textContent = body;
-  // animate
+function setPushByKey(key) {
+  const d = pushVariants[key];
+  document.getElementById('pushTitle').textContent = d.title;
+  document.getElementById('pushBody').textContent  = d.body;
   const banner = document.querySelector('.push-banner');
   banner.style.animation = 'none';
-  banner.offsetHeight; // reflow
+  banner.offsetHeight;
   banner.style.animation = 'slideDown .35s cubic-bezier(.34,1.56,.64,1)';
 }
 
+// ── SCENE SWITCHER ────────────────────────────────────────────
+function showScene(key) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.scene-btn').forEach(b => b.classList.remove('active'));
+  const sc = scenes[key];
+  document.getElementById(sc.id).classList.add('active');
+  document.getElementById('sceneDesc').innerHTML = sc.desc;
+  document.querySelectorAll('.scene-btn').forEach(b => {
+    if(b.getAttribute('onclick') && b.getAttribute('onclick').includes("'"+key+"'")) b.classList.add('active');
+  });
+  const sb = document.getElementById('statusBar');
+  sb.style.background = sc.sb === 'transparent' ? 'transparent' : sc.sb;
+  sb.querySelectorAll('.time, .icons').forEach(el => el.style.color = sc.sbText);
+  sb.style.position = sc.sb === 'transparent' ? 'absolute' : 'relative';
+  sb.style.zIndex   = sc.sb === 'transparent' ? '100' : '';
+  sb.style.width    = '100%';
+  if(key === 'learn') initLearn();
+}
+
+// ── INBOX ─────────────────────────────────────────────────────
 function switchTab(tab) {
   document.getElementById('tabNotif').classList.toggle('active', tab==='notif');
   document.getElementById('tabNotice').classList.toggle('active', tab==='notice');
-  document.getElementById('notifList').style.display = tab==='notif' ? 'block' : 'none';
+  document.getElementById('notifList').style.display  = tab==='notif'  ? 'block' : 'none';
   document.getElementById('noticeList').style.display = tab==='notice' ? 'block' : 'none';
 }
 
 function markAllRead() {
   document.querySelectorAll('.notif-item.unread').forEach(el => {
-    el.classList.remove('unread');
-    el.classList.add('read');
+    el.classList.replace('unread','read');
     const dot = el.querySelector('.notif-dot');
     if(dot) dot.style.background = 'transparent';
-    const title = el.querySelector('.notif-title');
-    if(title) { title.style.fontWeight='500'; title.style.color='#444'; }
+    const t = el.querySelector('.notif-title');
+    if(t) { t.style.fontWeight='500'; t.style.color='#444'; }
   });
-  unreadCount = 0;
-  const badge = document.getElementById('notifBadge');
-  const navBadge = document.getElementById('inboxNavBadge');
-  if(badge) badge.style.display = 'none';
-  if(navBadge) navBadge.style.display = 'none';
+  const b1 = document.getElementById('notifBadge');
+  const b2 = document.getElementById('inboxNavBadge');
+  if(b1) b1.style.display = 'none';
+  if(b2) b2.style.display = 'none';
+}
+
+// ── LEARN — QUESTIONS ─────────────────────────────────────────
+const questions = [
+  { text:'ই-লার্নিং পদ্ধতিতে শিক্ষার্থী ও শিক্ষকের মধ্যে কোন ধরনের যোগাযোগ হয়?',
+    opts:['মুখোমুখি যোগাযোগ','ভার্চুয়াল যোগাযোগ','টেলিফোন যোগাযোগ','কোনো যোগাযোগ নেই'], ans:1 },
+  { text:'বিশ্বগ্রাম ধারণাটির প্রবক্তা কে?',
+    opts:['ডেমিয়েন ব্রডরিক','মার্শাল ম্যাকলুহান','জন ম্যাকার্থি','অ্যান্টোনিন আরচিউড'], ans:1 },
+  { text:'কম্পিউটার সংশ্লিষ্ট যন্ত্রপাতিকে সঠিকভাবে পরিচালনার জন্য নিচের কোনটি প্রয়োজন?',
+    opts:['হার্ডওয়্যার','সফটওয়্যার','ইন্টারনেট','মানুষের জ্ঞান'], ans:1 },
+  { text:'অনলাইনে পারস্পারিক মিথস্ক্রিয়ায় শিক্ষা কার্যক্রম পরিচালনাকে কী বলে?',
+    opts:['ই-স্টাডি','ই-লার্নিং','অন-লার্নিং','ইন্টারঅ্যাক্টিভ ক্লাস'], ans:1 },
+  { text:'কৃত্রিম বুদ্ধিমত্তার জনক কে?',
+    opts:['চার্লস ব্যাবেজ','জন ম্যাকার্থি','বিল গেটস','অ্যালান টুরিং'], ans:1 },
+  { text:'রোবটিক্সে কোন ধরনের প্রযুক্তি ব্যবহার করা হয়?',
+    opts:['শুধু হার্ডওয়্যার','শুধু সফটওয়্যার','হার্ডওয়্যার ও সফটওয়্যার উভয়','শুধু ইন্টারনেট'], ans:2 },
+  { text:'ক্রায়োসার্জারি কোন ক্ষেত্রে ব্যবহৃত হয়?',
+    opts:['প্রকৌশল','চিকিৎসা','কৃষি','শিক্ষা'], ans:1 },
+  { text:'ন্যানো প্রযুক্তিতে ব্যবহৃত পদার্থের আকার কত?',
+    opts:['১-১০০ মাইক্রোমিটার','১-১০০ ন্যানোমিটার','১-১০০ মিলিমিটার','১-১০০ সেন্টিমিটার'], ans:1 },
+  { text:'বায়োমেট্রিক্স কোথায় ব্যবহার করা হয়?',
+    opts:['শুধু ব্যাংকে','শুধু সীমান্তে','পরিচয় শনাক্তকরণে','শুধু হাসপাতালে'], ans:2 },
+  { text:'ICT-এর পূর্ণরূপ কী?',
+    opts:['Information and Computer Technology','Information and Communication Technology','Internet and Computer Technology','Integrated Communication Technology'], ans:1 },
+  { text:'সামাজিক যোগাযোগ মাধ্যমের উদাহরণ কোনটি?',
+    opts:['MS Word','Facebook','Photoshop','MS Excel'], ans:1 },
+  { text:'ক্লাউড কম্পিউটিং-এর সুবিধা কোনটি?',
+    opts:['ডেটা শুধু লোকালে সংরক্ষণ','যেকোনো স্থান থেকে ডেটা অ্যাক্সেস','ইন্টারনেট ছাড়া কাজ','উচ্চ খরচ'], ans:1 },
+];
+
+const toastMilestones = {
+  5:  { emoji:'🔥', title:'দারুণ করছ! 🔥',      body:'৫টি প্রশ্ন সম্পন্ন! চালিয়ে যাও!' },
+  10: { emoji:'🎯', title:'একটানা ১০টি! 🎯',    body:'একটানা ১০টি উত্তর! তুমি দারুণ করছ!' },
+  20: { emoji:'🏆', title:'WOW! ২০টি! 🏆',       body:'অবিশ্বাস্য! তুমি আজ আগুন 🔥' },
+};
+
+let currentQ = 0, totalAnswered = 0, correctCount = 0, qAnswered = false, toastTimer = null;
+
+function initLearn() {
+  currentQ = 0; totalAnswered = 0; correctCount = 0; qAnswered = false;
+  renderQuestion();
+}
+
+function renderQuestion() {
+  qAnswered = false;
+  const q = questions[currentQ % questions.length];
+  const labels = ['(A)','(B)','(C)','(D)'];
+  const html = `
+    <div class="question-card">
+      <div class="q-num">প্রশ্ন ${currentQ + 1}</div>
+      <div class="q-text">${q.text}</div>
+    </div>
+    <div class="answer-options">
+      ${q.opts.map((o, i) => `
+        <div class="option" id="opt${i}" onclick="selectOpt(${i})">
+          ${labels[i]} ${o}
+          <div class="option-check" id="chk${i}"></div>
+        </div>`).join('')}
+    </div>
+    <div id="feedbackRow" style="display:none;" class="answer-feedback"></div>
+    <button class="next-q-btn" id="nextQBtn" style="display:none;" onclick="nextQuestion()">Next Question</button>
+    <div style="height:100px;"></div>`;
+  document.getElementById('learnScrollArea').innerHTML = html;
+  updateLearnProgress();
+}
+
+function selectOpt(idx) {
+  if(qAnswered) return;
+  qAnswered = true;
+  totalAnswered++;
+  const q = questions[currentQ % questions.length];
+  const correct = idx === q.ans;
+  if(correct) correctCount++;
+
+  for(let i = 0; i < q.opts.length; i++) {
+    const el  = document.getElementById('opt'+i);
+    const chk = document.getElementById('chk'+i);
+    el.style.pointerEvents = 'none';
+    if(i === q.ans) { el.className='option correct'; chk.textContent='✓'; }
+    else if(i === idx && !correct) { el.className='option wrong'; chk.textContent='✕'; }
+  }
+
+  const fb = document.getElementById('feedbackRow');
+  fb.style.display = 'flex';
+  fb.className = 'answer-feedback ' + (correct ? 'correct' : 'wrong');
+  fb.innerHTML = correct
+    ? '✓&nbsp; Correct! &nbsp;<span style="font-weight:400;color:#555;font-size:12px;">See Explanation ↗</span>'
+    : '✕&nbsp; Incorrect &nbsp;<span style="font-weight:400;color:#555;font-size:12px;">See Explanation ↗</span>';
+
+  document.getElementById('nextQBtn').style.display = 'block';
+
+  if(toastMilestones[totalAnswered]) showLearnToast(toastMilestones[totalAnswered]);
+}
+
+function nextQuestion() {
+  currentQ++;
+  document.getElementById('learnScrollArea').scrollTop = 0;
+  renderQuestion();
+}
+
+function updateLearnProgress() {
+  const total = questions.length;
+  const pct = Math.round((currentQ / total) * 100);
+  document.getElementById('learnCounter').textContent = `${currentQ + 1} /${total}`;
+  document.getElementById('learnProgressBar').style.width = pct + '%';
+  document.getElementById('learnPct').textContent = pct + '%';
+}
+
+function showLearnToast(data) {
+  const toast   = document.getElementById('learnToast');
+  const overlay = document.getElementById('learnToastOverlay');
+  document.getElementById('toastEmoji').textContent = data.emoji;
+  document.getElementById('toastTitle').textContent = data.title;
+  document.getElementById('toastBody').textContent  = data.body;
+  toast.style.display = 'flex';
+  toast.style.transform = '';
+  toast.style.opacity   = '';
+  toast.style.transition = '';
+  overlay.style.pointerEvents = 'all';
+  toast.style.animation = 'none';
+  toast.offsetHeight;
+  toast.style.animation = 'slideUp .4s cubic-bezier(.34,1.56,.64,1)';
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(dismissToast, 4000);
 }
 
 function dismissToast() {
-  const t = document.getElementById('learnToast');
-  t.style.animation = 'none';
-  t.style.transform = 'translateY(120px)';
-  t.style.opacity = '0';
-  t.style.transition = 'all .3s ease';
+  const toast   = document.getElementById('learnToast');
+  const overlay = document.getElementById('learnToastOverlay');
+  toast.style.animation  = 'none';
+  toast.style.transition = 'all .3s ease';
+  toast.style.transform  = 'translateY(120px)';
+  toast.style.opacity    = '0';
+  overlay.style.pointerEvents = 'none';
+  setTimeout(() => { toast.style.display = 'none'; }, 300);
 }
 
+// ── RETENTION ─────────────────────────────────────────────────
 const retData = {
-  1: { title:'তোমাকে মিস করছি! 😔', body:'আজ পড়াশোনা করোনি। একটু পড়লে কেমন হয়?' },
-  2: { title:'৩ দিন হয়ে গেছে! 😟', body:'পরীক্ষার জন্য সময় কম। আজই একটু পড়ো! 📖' },
-  3: { title:'১ সপ্তাহ পার হয়ে গেছে! 😢', body:'তোমার লক্ষ্য পূরণ করতে আজই ফিরে এসো!' },
-  4: { title:'দুই সপ্তাহ চলে গেছে! 💔', body:'প্রতিযোগীরা এগিয়ে যাচ্ছে। তুমি কি পিছিয়ে থাকবে?' },
+  1:{ title:'তোমাকে মিস করছি! 😔',          body:'আজ পড়াশোনা করোনি। একটু পড়লে কেমন হয়?' },
+  2:{ title:'৩ দিন হয়ে গেছে! 😟',           body:'পরীক্ষার জন্য সময় কম। আজই একটু পড়ো! 📖' },
+  3:{ title:'১ সপ্তাহ পার হয়ে গেছে! 😢',    body:'তোমার লক্ষ্য পূরণ করতে আজই ফিরে এসো!' },
+  4:{ title:'দুই সপ্তাহ চলে গেছে! 💔',      body:'প্রতিযোগীরা এগিয়ে যাচ্ছে। তুমি কি পিছিয়ে থাকবে?' },
 };
 function setRetention(stage) {
   document.getElementById('retTitle').textContent = retData[stage].title;
@@ -890,6 +1006,9 @@ function setRetention(stage) {
   const colors = {1:'#22c55e',2:'#f59e0b',3:'#ef4444',4:'#7C3AED'};
   document.querySelectorAll('.ret-stage')[stage-1].style.border = `2px solid ${colors[stage]}`;
 }
+
+// ── INIT ──────────────────────────────────────────────────────
+initLearn();
 </script>
 </body>
 </html>
